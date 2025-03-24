@@ -20,7 +20,8 @@ class ReadAllGuilds : Plugin() {
                 for (guildId in guilds) {
                     try {
                         // Mark the current guild as read
-                        StoreStream.getMessageAck().ack(guildId)
+                        // Pass the required parameters to the ack method
+                        StoreStream.getMessageAck().ack(guildId, null, null)
                         markedCount++
                         
                         // Only sleep if this isn't the last guild
