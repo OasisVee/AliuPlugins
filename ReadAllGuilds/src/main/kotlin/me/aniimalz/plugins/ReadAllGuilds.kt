@@ -5,7 +5,6 @@ import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.api.CommandsAPI
 import com.aliucord.entities.Plugin
-import com.discord.models.message.Message
 import com.discord.stores.StoreStream
 import kotlin.random.Random
 
@@ -22,7 +21,7 @@ class ReadAllGuilds : Plugin() {
                     try {
                         // Fetch the latest message ID for the guild
                         val latestMessageId = getLatestMessageId(guildId)
-                        val lastReadTimestamp = System.currentTimeMillis()
+                        val lastReadTimestamp = System.currentTimeMillis().toString()
 
                         if (latestMessageId != null) {
                             // Mark the current guild as read
@@ -59,7 +58,7 @@ class ReadAllGuilds : Plugin() {
             // Fetch the latest message from the guild
             val messages = StoreStream.getMessages().getMessagesForGuild(guildId)
             val latestMessage = messages.maxByOrNull { it.timestamp }
-            latestMessage?.id
+            latestMessage?.id.toString()
         } catch (e: Exception) {
             // Handle any exceptions that might occur
             Utils.showToast("Error fetching latest message for guild $guildId: ${e.message}")
