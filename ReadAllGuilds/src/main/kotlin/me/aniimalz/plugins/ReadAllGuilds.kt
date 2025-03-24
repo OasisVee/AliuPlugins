@@ -10,11 +10,12 @@ import com.discord.stores.StoreStream
 @AliucordPlugin
 class ReadAllGuilds : Plugin() {
     override fun start(ctx: Context) {
-        commands.registerCommand("readallguilds", "Mark all of your guilds as read. Will wait 2 seconds between actions to not spam api") {
+        commands.registerCommand("readallguilds", "Mark all of your guilds as read. Will wait 5 seconds between actions to not spam api") {
             Utils.threadPool.execute {
-                StoreStream.getGuilds().guilds.keys.forEach { guildId ->
-                    StoreStream.getMessageAck().ackGuild(guildId)
-                    Thread.sleep(2000)
+                StoreStream.getGuilds().guilds.keys.forEach {
+                    StoreStream.getMessageAck().ackGuild(ctx, it) {
+                        Thread.sleep(5000)
+                    }
                 }
             }
             CommandsAPI.CommandResult("Marking all guilds as read. This can take a while if you're in a lot of servers", null, false)
