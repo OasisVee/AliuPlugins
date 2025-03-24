@@ -5,6 +5,7 @@ import com.aliucord.Utils
 import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.api.CommandsAPI
 import com.aliucord.entities.Plugin
+import com.discord.models.message.Message
 import com.discord.stores.StoreStream
 import kotlin.random.Random
 
@@ -19,11 +20,16 @@ class ReadAllGuilds : Plugin() {
 
                 for (guildId in guilds) {
                     try {
-                        // Mark the current guild as read
-                        // Pass the required parameters to the ack method
-                        StoreStream.getMessageAck().ack(guildId, null, null)
-                        markedCount++
-                        
+                        // Fetch the latest message ID for the guild
+                        val latestMessageId = getLatestMessageId(guildId)
+                        val lastReadTimestamp = System.currentTimeMillis()
+
+                        if (latestMessageId != null) {
+                            // Mark the current guild as read
+                            StoreStream.getMessageAck().ack(guildId, latestMessageId, lastReadTimestamp)
+                            markedCount++
+                        }
+
                         // Only sleep if this isn't the last guild
                         if (markedCount < totalGuilds) {
                             // Random delay between 1000ms (1s) and 5000ms (5s)
@@ -39,12 +45,25 @@ class ReadAllGuilds : Plugin() {
                 // Show a toast when all guilds have been processed
                 Utils.showToast("Marked $markedCount out of $totalGuilds guilds as read")
             }
-            
+
             CommandsAPI.CommandResult("Marking all guilds as read. This can take a while if you're in a lot of servers", null, false)
         }
     }
 
     override fun stop(ctx: Context) {
         commands.unregisterAll()
+    }
+
+    private fun getLatestMessageId(guildId: Long): String? {
+        return try {
+            // Fetch the latest message from the guild
+            val messages = StoreStream.getMessages().getMessagesForGuild(guildId)
+            val latestMessage = messages.maxByOrNull { it.timestamp }
+            latestMessage?.id
+        } catch (e: Exception) {
+            // Handle any exceptions that might occur
+            Utils.showToast("Error fetching latest message for guild $guildId: ${e.message}")
+            null
+        }
     }
 }
