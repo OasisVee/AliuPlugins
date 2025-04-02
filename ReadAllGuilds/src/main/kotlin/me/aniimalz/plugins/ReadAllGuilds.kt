@@ -6,7 +6,6 @@ import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.api.CommandsAPI
 import com.aliucord.entities.Plugin
 import com.discord.stores.StoreStream
-import com.discord.api.message.reaction.MessageReactionUpdate
 import com.discord.api.channel.Channel
 import com.discord.models.domain.ModelReadState
 import com.discord.utilities.rest.RestAPI
@@ -23,7 +22,7 @@ class ReadAllGuilds : Plugin() {
                     
                     // Collect all unread channels from all guilds
                     for (guildId in guildIds) {
-                        val readStateStore = StoreStream.getReadState()
+                        val readStateStore = StoreStream.getReadStates()
                         val guildChannels = StoreStream.getChannels().getGuildChannels(guildId)
                         
                         // Get all channels for this guild
@@ -31,7 +30,7 @@ class ReadAllGuilds : Plugin() {
                             // Check if channel has unread messages
                             if (readStateStore.hasUnread(channelId)) {
                                 // Add to list of channels to acknowledge
-                                val lastMessageId = readStateStore.lastMessageId(channelId)
+                                val lastMessageId = readStateStore.getLastMessageId(channelId)
                                 if (lastMessageId != null) {
                                     channelsToAck.add(mapOf(
                                         "channelId" to channelId,
