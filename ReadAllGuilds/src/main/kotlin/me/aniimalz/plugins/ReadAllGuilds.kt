@@ -15,26 +15,48 @@ class ReadAllGuilds : Plugin() {
                 try {
                     // Get the guilds collection
                     val guilds = StoreStream.getGuilds().guilds.keys
-                    
-                    // Log the number of guilds being processed
                     logger.info("Starting to mark ${guilds.size} guilds as read")
                     
-                    // Try different approach based on available methods
-                    for (guildId in guilds) {
-                        try {
-                            // First approach: Try to call ackGuild with just the guild ID
-                            StoreStream.getMessageAck().ackGuild(guildId)
-                        } catch (e: NoSuchMethodError) {
-                            try {
-                                // Second approach: Try the ackGuild method without the callback
-                                StoreStream.getMessageAck().ackGuild(ctx, guildId)
-                            } catch (e: NoSuchMethodError) {
-                                logger.error("Could not find appropriate ackGuild method", e)
-                            }
-                        }
+                    // Try using the MessageAck store's methods
+                    val messageAckStore = StoreStream.getMessageAck()
+                    
+                    // Attempt to find the appropriate method using reflection
+                    val methods = messageAckStore.javaClass.methods
+                    val ackMethods = methods.filter { it.name.toLowerCase().contains("ack") && it.name.toLowerCase().contains("guild") }
+                    
+                    if (ackMethods.isNotEmpty()) {
+                        logger.info("Found potential ack methods: ${ackMethods.map { it.name }}")
                         
-                        // Wait 5 seconds between requests to avoid API rate limits
-                        Thread.sleep(5000)
+                        // Try the most promising method for each guild
+                        for (guildId in guilds) {
+                            try {
+                                // Approach using the newer "acknowledgeGuild" method that might exist
+                                messageAckStore.javaClass.getMethod("acknowledgeGuild", Long::class.java).invoke(messageAckStore, guildId)
+                                logger.info("Marked guild $guildId as read")
+                            } catch (e: Exception) {
+                                logger.error("Failed to mark guild $guildId as read: ${e.message}")
+                            }
+                            
+                            // Wait 5 seconds between requests to avoid API rate limits
+                            Thread.sleep(500)
+                        }
+                    } else {
+                        // If no specific acknowledgment methods are found, try using the read state manager
+                        logger.info("No ack methods found, trying read state approach")
+                        
+                        for (guildId in guilds) {
+                            try {
+                                // Try to get the read state manager and mark guild as read
+                                val readStateManager = StoreStream.getReadStateManager()
+                                readStateManager.javaClass.getMethod("markGuildAsRead", Long::class.java).invoke(readStateManager, guildId)
+                                logger.info("Marked guild $guildId as read using read state manager")
+                            } catch (e: Exception) {
+                                logger.error("Failed to mark guild $guildId as read: ${e.message}")
+                            }
+                            
+                            // Wait 5 seconds between requests to avoid API rate limits
+                            Thread.sleep(5000)
+                        }
                     }
                     
                     logger.info("Finished marking guilds as read")
@@ -42,7 +64,7 @@ class ReadAllGuilds : Plugin() {
                     logger.error("Error while marking guilds as read", e)
                 }
             }
-            CommandsAPI.CommandResult("Marking all guilds as read. This can take a while if you're in a lot of servers", null, false)
+            CommandsAPI.CommandResult("Attempting to mark all guilds as read. This can take a while if you're in a lot of servers.", null, false)
         }
     }
 
