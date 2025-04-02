@@ -6,63 +6,29 @@ import com.aliucord.annotations.AliucordPlugin
 import com.aliucord.api.CommandsAPI
 import com.aliucord.entities.Plugin
 import com.discord.stores.StoreStream
-import kotlin.random.Random
 
 @AliucordPlugin
 class ReadAllGuilds : Plugin() {
     override fun start(ctx: Context) {
-        commands.registerCommand("readallguilds", "Mark all of your guilds as read. Will wait between 1-5 seconds between actions to not spam api") {
+        commands.registerCommand("readallguilds", "Mark all of your guilds as read. Will wait 5 seconds between actions to not spam api") {
             Utils.threadPool.execute {
-                val guilds = StoreStream.getGuilds().guilds.keys.toList()
-                val totalGuilds = guilds.size
+                val guildIds = StoreStream.getGuilds().guilds.keys.toList()
                 var markedCount = 0
-
-                for (guildId in guilds) {
-                    try {
-                        // Fetch the latest message ID for the guild
-                        val latestMessageId = getLatestMessageId(guildId)
-                        val lastReadTimestamp = System.currentTimeMillis().toString()
-
-                        if (latestMessageId != null) {
-                            // Mark the current guild as read
-                            StoreStream.getMessageAck().ack(guildId, latestMessageId, lastReadTimestamp)
-                            markedCount++
-                        }
-
-                        // Only sleep if this isn't the last guild
-                        if (markedCount < totalGuilds) {
-                            // Random delay between 1000ms (1s) and 5000ms (5s)
-                            val randomDelay = Random.nextInt(1000, 5001)
-                            Thread.sleep(randomDelay.toLong())
-                        }
-                    } catch (e: Exception) {
-                        // Handle any exceptions that might occur
-                        Utils.showToast("Error marking guild $guildId as read: ${e.message}")
-                    }
-                }
                 
-                // Show a toast when all guilds have been processed
-                Utils.showToast("Marked $markedCount out of $totalGuilds guilds as read")
+                guildIds.forEach { guildId ->
+                    // Mark guild as read
+                    StoreStream.getMessageAck().ackGuild(ctx, guildId)
+                    markedCount++
+                    
+                    // Sleep between requests to avoid API rate limits
+                    Thread.sleep(500)
+                }
             }
-
-            CommandsAPI.CommandResult("Marking all guilds as read. This can take a while if you're in a lot of servers", null, false)
+            CommandsAPI.CommandResult("Started marking ${StoreStream.getGuilds().guilds.size} guilds as read. This can take a while if you're in a lot of servers", null, false)
         }
     }
 
     override fun stop(ctx: Context) {
         commands.unregisterAll()
-    }
-
-    private fun getLatestMessageId(guildId: Long): String? {
-        return try {
-            // Fetch the latest message from the guild
-            val messages = StoreStream.getMessages().getMessagesForGuild(guildId)
-            val latestMessage = messages.maxByOrNull { it.timestamp }
-            latestMessage?.id.toString()
-        } catch (e: Exception) {
-            // Handle any exceptions that might occur
-            Utils.showToast("Error fetching latest message for guild $guildId: ${e.message}")
-            null
-        }
     }
 }
